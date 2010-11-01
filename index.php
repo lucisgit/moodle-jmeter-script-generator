@@ -1154,12 +1154,19 @@ class jmeter {
         //  Make the jQuery script
         try {
             // insert the header to tell the browser how to read the document
-            //header("Content-type: text/xml");
-
+            //header("Content-type: text/html");
             $jmeter = new jmeter($jmeter_data);
 
             // print the SimpleXMLElement as a XML well-formed string
-            $xml = $jmeter->get_xml()->asXML();
+            $dom_sxe = dom_import_simplexml($jmeter->get_xml());
+
+            $dom = new DOMDocument('1.0', 'UTF-8');
+            $dom->formatOutput = true;
+            $dom_sxe = $dom->importNode($dom_sxe, true);
+            $dom_sxe = $dom->appendChild($dom_sxe);
+
+            $xml = $dom->saveXML();
+            //$xml = $jmeter->get_xml()->asXML();
 
             //  Now we should have the CSV and the XML.
             //  Place them both into a zip file and present to the user
