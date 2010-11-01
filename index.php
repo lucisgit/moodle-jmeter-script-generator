@@ -614,12 +614,12 @@ class forum_test extends master_test {
     var $replys;
     var $post_regex;
 
-    function __construct($cmid) {
+    function __construct($forum) {
         global $DB;
 
         //  Get course modules record
-        $cm                = $DB->get_record('course_modules', array('id' => $cmid));
-        $this->name        = "[FORUM $cmid]";
+        $cm                = $DB->get_record('course_modules', array('id' => $forum->cmid));
+        $this->name        = "[FORUM {$forum->cmid}:{$forum->name}]";
         $this->forum_view  = 'mod/forum/view.php';
         $this->view_params = array('id'=>$cm->id);
         $this->forum_post  = 'mod/forum/post.php';
@@ -1025,7 +1025,7 @@ class jmeter {
         //  Add the forum testplan
         if(!empty($jmeter_data['forum'])) {
             foreach($jmeter_data['forum'] as $forum) {
-                $this->testplan_hashtree_constructor->add_child(new forum_test($forum->cmid));
+                $this->testplan_hashtree_constructor->add_child(new forum_test($forum));
             }
         }
 
