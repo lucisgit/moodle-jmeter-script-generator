@@ -553,14 +553,9 @@ class master_test extends xml_element {
         //  Add in the URLRewrite Modifier which automatically adds in sesskey to all post or get forums
         $this->threadgroup_hashtree->add_child(new url_rewrite($this->name));
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
-
         //  View course page
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Course', 'course/view.php', array('id'=>$this->courseid)));
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
     }
 }
 
@@ -669,9 +664,6 @@ class forum_test extends master_test {
         //  View forum page
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Forum', $this->forum_view, $this->view_params));
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
-
         //  Make a post (to insure there is at least one post), find a random discussion, find a reply, make a post
         for($i=1; $i<=$this->posts; $i++) {
             //  Store the id if it hasn't yet been removed, else put it back in if we are looping around again
@@ -684,18 +676,13 @@ class forum_test extends master_test {
             //  View forum post page and regex's to get data
             $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View First Discussion Post Data', $this->forum_post, $this->post_params, false, $this->post_regex));
 
-            //  Now add in random timer element
-            $this->threadgroup_hashtree->add_child(new random_timer($this->name));
-
             //  Change the subject of the post
             $this->post_arguments['subject'] = 'testing ${username}';
 
             //  Post new discussion
             $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Post to Discussion', $this->forum_post, $this->post_arguments, (object) array('method' => 'POST')));
 
-            //  Now add in random timer element
-            $this->threadgroup_hashtree->add_child(new random_timer($this->name));
-
+            //  Add in the loopconroller
             $this->threadgroup_hashtree->add_child(new loopcontroller($this->name, $this->replys, $loop_forever='false'));
 
             //  Add in the loopconroller hashtree
@@ -704,20 +691,11 @@ class forum_test extends master_test {
             //  Find random discussion
             $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Find random discussion', $this->forum_view, $this->view_params, false, $this->discuss_regex));
 
-            //  Now add in random timer element
-            $loopcontroller_hashtree->add_child(new random_timer($this->name));
-
             //  View discussion
             $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Random Discussion & find random reply', $this->forum_discuss, $this->discuss_params, false, $this->reply_regex));
 
-            //  Now add in random timer element
-            $loopcontroller_hashtree->add_child(new random_timer($this->name));
-
             //  View random post page passing regex's to get data from
             $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Random Reply & get post data', $this->forum_post, $this->reply_params, false, $this->post_regex));
-
-            //  Now add in random timer element
-            $loopcontroller_hashtree->add_child(new random_timer($this->name));
 
             //  Change the subject of the reply
             $this->post_arguments['subject'] = 'Reply to post ${replyid}.';
@@ -728,12 +706,11 @@ class forum_test extends master_test {
             //  Post to random reply
             $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Post to Random Reply', $this->forum_post, $this->post_arguments, (object) array('method' => 'POST')));
 
-            //  Now add in random timer element
-            $loopcontroller_hashtree->add_child(new random_timer($this->name));
-
             $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
 
         }
+        //  Now add in random timer element
+        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
 
         $this->convert_to_xml_element();
     }
