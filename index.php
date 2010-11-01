@@ -1103,7 +1103,7 @@ class jmeter {
         //  Now we need to add the user and loop info into the jmeter data
         $jmeter_data['users'] = $user_count;
         $jmeter_data['loops'] = intval($_POST['loops']);
-        $jmeter_data['login'] = $_POST['user_type'];
+        //$jmeter_data['login'] = $_POST['user_type'];
 
         //  Now we need to work out which activities we are doing
         foreach($_POST['data'] as $type => $data) {
@@ -1189,6 +1189,7 @@ class jmeter {
 
                 // Deletefile (ignore any errors)
                 @unlink($filepath);
+                exit;
             } else {
                 throw new Exception('failed to create zip archive');
             }
