@@ -1244,12 +1244,15 @@ class jmeter {
         //  and get any forums and quizes.
         $forum_mod_id   = $DB->get_field('modules', 'id', array('name' => 'forum'));
         $quiz_mod_id    = $DB->get_field('modules', 'id', array('name' => 'quiz'));
+        $chat_mod_id    = $DB->get_field('modules', 'id', array('name' => 'chat'));
 
         $total_forum_count   = 0;
         $total_quiz_count    = 0;
+        $total_chat_count    = 0;
 
         $all_forums   = array();
         $all_quizes   = array();
+        $all_chats   = array();
 
         $course_rs = $DB->get_recordset('course', array('category' => $cat_id));
         foreach($course_rs as $rec) {
@@ -1304,6 +1307,31 @@ class jmeter {
                     cm.course = $rec->id
             ");
 
+            $chats = $DB->get_records_sql("
+                SELECT
+                    cm.id            as cmid,
+                    chat.name        as name,
+                    chat.id          as id,
+                    course.fullname  as course_name,
+                    course.id        as course_id
+                FROM
+                    {$CFG->prefix}course_modules cm
+                JOIN
+                    {$CFG->prefix}chat chat
+                ON
+                    cm.instance = chat.id
+                JOIN
+                    {$CFG->prefix}course course
+                ON
+                    course.id = cm.course
+                WHERE
+                    cm.module = $chat_mod_id
+                AND
+                    cm.visible = 1
+                AND
+                    cm.course = $rec->id
+            ");
+
             //  Now we have all the activities we need to check that the quizes have
             //  questions assigned and those questions are supported
             if(!empty($quizes)) {
@@ -1325,9 +1353,11 @@ class jmeter {
 
             $course_forum_count   = !empty($forums)   ? count($forums)   : 0;
             $course_quiz_count    = !empty($quizes)   ? count($quizes)   : 0;
+            $course_chat_count    = !empty($chats)   ? count($chats)   : 0;
 
             $total_forum_count   += $course_forum_count;
             $total_quiz_count    += $course_quiz_count;
+            $total_chat_count    += $course_chat_count;
 
             if(!empty($forums)) {
                 $all_forums = array_merge($all_forums, $forums);
@@ -1335,10 +1365,13 @@ class jmeter {
             if(!empty($quizes)) {
                 $all_quizes = array_merge($all_quizes, $quizes);
             }
+            if(!empty($chats)) {
+                $all_chats = array_merge($all_chats, $chats);
+            }
         }
 
         //  Check if we have any forums/quizes/activities if not redirect back to selection screen
-        if(empty($total_forum_count) && empty($total_quiz_count)) {
+        if(empty($total_forum_count) && empty($total_quiz_count) && empty($total_chat_count)) {
             redirect($_SERVER['PHP_SELF'], 'This category has no activies. Redirect to selection screen', 3);
             exit();
         }
@@ -1346,6 +1379,7 @@ class jmeter {
         echo '<div style="border:1px solid #ccc;padding:5px; min-width:500px;margin-bottom:5px">';
         echo "Total Forums: $total_forum_count<br/>";
         echo "Total Quizes: $total_quiz_count<br/>";
+        echo "Total Chats: $total_chat_count<br/>";
         echo '</div>';
 
         //  Now ask the admin if they would like to test all forums.
@@ -1357,8 +1391,10 @@ class jmeter {
             'category'      => $cat_id,
             'forum'         => $all_forums,
             'quiz'          => $all_quizes,
+            'chat'          => $all_chats,
             'forum_count'   => $total_forum_count,
             'quiz_count'    => $total_quiz_count,
+            'chat_count'    => $total_chat_count,
         );
 
         ?>
@@ -1446,7 +1482,8 @@ class jmeter {
                                 }
                                 $activities = array(
                                                 'Forum'   => $_SESSION['loadtesting_data']['forum'],
-                                                'Quiz'    => $_SESSION['loadtesting_data']['quiz']
+                                                'Quiz'    => $_SESSION['loadtesting_data']['quiz'],
+                                                'Chat'    => $_SESSION['loadtesting_data']['chat'],
                                             );
                                 foreach($activities as $type => $type_activities) {
                                     if(!empty($type_activities)) {
