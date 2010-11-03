@@ -518,6 +518,11 @@ class master_test extends xml_element {
     var $threadgroup_hashtree;
     var $name;
     var $courseid;
+    var $wordgenerator;
+
+    function  __construct() {
+        $this->wordgenerator = new LoremIpsumGenerator;
+    }
 
     protected function convert_to_xml_element() {
         $data = new xml_element($this->threadgroup->tagname, $this->threadgroup->attributes, $this->threadgroup->value, $this->threadgroup->children, array($this->threadgroup_hashtree));
@@ -612,6 +617,7 @@ class forum_test extends master_test {
     function __construct($forum) {
         global $DB;
 
+        parent::__construct();
         //  Get course modules record
         $cm                = $DB->get_record('course_modules', array('id' => $forum->cmid));
         $this->name        = "[FORUM {$forum->cmid}:{$forum->name}]";
@@ -639,7 +645,7 @@ class forum_test extends master_test {
         //  Prepare the vars to post to the site
         $this->post_arguments = array(
             'MAX_FILE_SIZE'   => 512000,
-            'message[text]'   => 'testing ${username} 456',
+            'message[text]'   => $this->wordgenerator->getContent(50, 'html'),
             'message[format]' => 1,
             'subscribe'       => 0,
             'submitbutton'    => 'Post to forum'
@@ -728,6 +734,7 @@ class chat_test extends master_test {
     function __construct($chat) {
         global $DB;
 
+        parent::__construct();
         //  Get course modules record
         $cm                = $DB->get_record('course_modules', array('id' => $chat->cmid));
         //  Get course modules record
@@ -751,7 +758,7 @@ class chat_test extends master_test {
 
         //  Prepare the vars to post to the site
         $this->post_arguments = array(
-            'message'   => 'testing ${username} 456',
+            'message'   => $this->wordgenerator->getContent(10, 'txt'),
             'id'        => $chat->id,
         );
 
@@ -782,6 +789,7 @@ class chat_test extends master_test {
 
         $this->post_params['newonly'] = $this->newonly;
         $this->post_params['last'] = '${last}';
+
         //  Refesh chat window and regex's to get data
         $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_post, $this->post_params, false, $this->post_regex));
 
@@ -1153,6 +1161,7 @@ class jmeter {
 }
 
     require_once(dirname(__FILE__) . '/../../../config.php');
+    require_once($CFG->dirroot.'/'.$CFG->admin.'/report/loadtesting/LoremIpsum.class.php');
     require_once($CFG->libdir.'/adminlib.php');
 
     //  Check to see if we have had the form posted, if so we want to send the zip file!
