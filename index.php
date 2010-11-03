@@ -758,6 +758,36 @@ class tree_results extends results_collector {
     }
 }
 
+class summary_report extends results_collector {
+    function __construct() {
+        parent::__construct('Summary Report', 'SummaryReport');
+    }
+}
+
+class aggregate_report extends results_collector {
+    function __construct() {
+        parent::__construct('Aggregate Report', 'StatVisualizer');
+    }
+}
+
+class aggregate_graph extends results_collector {
+    function __construct() {
+        parent::__construct('Aggregate Graph', 'StatGraphVisualizer');
+    }
+}
+
+class graph_results extends results_collector {
+    function __construct() {
+        parent::__construct('Graph Results', 'GraphVisualizer');
+    }
+}
+
+class graph_full_results extends results_collector {
+    function __construct() {
+        parent::__construct('Graph Full Results', 'GraphAccumVisualizer');
+    }
+}
+
 class quiz_test extends master_test {
     var $quiz_view;
     var $pages;
@@ -1020,6 +1050,11 @@ class jmeter {
 
         //  Now add in the listeners
         $this->testplan_hashtree_constructor->add_child(new tree_results());
+        $this->testplan_hashtree_constructor->add_child(new summary_report());
+        $this->testplan_hashtree_constructor->add_child(new aggregate_report());
+        $this->testplan_hashtree_constructor->add_child(new aggregate_graph());
+        $this->testplan_hashtree_constructor->add_child(new graph_results());
+        $this->testplan_hashtree_constructor->add_child(new graph_full_results());
     }
 
     function add_hashTree_to_xml_dom($xml_parent_pointer) {
