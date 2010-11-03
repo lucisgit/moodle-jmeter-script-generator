@@ -716,6 +716,85 @@ class forum_test extends master_test {
     }
 }
 
+class chat_test extends master_test {
+    var $chat_view;
+    var $view_params;
+    var $chat_post;
+    var $post_params;
+    var $posts;
+    var $newonly;
+    var $post_regex;
+
+    function __construct($chat) {
+        global $DB;
+
+        //  Get course modules record
+        $cm                = $DB->get_record('course_modules', array('id' => $chat->cmid));
+        //  Get course modules record
+        $this->name        = "[CHAT {$chat->cmid}:{$chat->name}]";
+        $this->chat_view   = 'mod/chat/view.php';
+        $this->view_params = array('id'=>$chat->cmid);
+        $this->chat_post   = 'mod/chat/gui_basic/index.php';
+        $this->post_params = array('id'=>$chat->id);
+        $this->posts       = 1;
+        $this->newonly     = 0;
+        $this->courseid    = $cm->course;
+
+        //  Prepare all the regex's for insert into the post page hashtree
+        $this->post_to_get = array('last', 'groupid', 'sesskey');
+        $post_regex = array();
+
+        foreach($this->post_to_get as $name) {
+            $post_regex[] = new regex("$this->name Get $name", $name, '<input.*?name="'.$name.'".*?value="(.*?)".*?\/>');
+        }
+        $this->post_regex = $post_regex;
+
+        //  Prepare the vars to post to the site
+        $this->post_arguments = array(
+            'message'   => 'testing ${username} 456',
+            'id'        => $chat->id,
+        );
+
+        foreach($this->post_to_get as $name) {
+            $this->post_arguments[$name] = '${'.$name.'}';
+        }
+
+        $this->chat_startup();
+    }
+
+    function chat_startup() {
+        $this->test_startup();
+
+        //  View chat page
+        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat page', $this->chat_view, $this->view_params));
+
+        //  Open chat window and regex's to get data
+        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_post, $this->post_params, false, $this->post_regex));
+
+        //  Add in the loopcontroller
+        $this->threadgroup_hashtree->add_child(new loopcontroller($this->name, $this->posts, $loop_forever='false'));
+
+        //  Add in the loopconroller hashtree
+        $loopcontroller_hashtree = new hashtree();
+
+        //  Post to random reply
+        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Post Chat Message', $this->chat_post, $this->post_arguments, (object) array('method' => 'POST')));
+
+        $this->post_params['newonly'] = $this->newonly;
+        $this->post_params['last'] = '${last}';
+        //  Refesh chat window and regex's to get data
+        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_post, $this->post_params, false, $this->post_regex));
+
+        // Add loopcontroller
+        $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
+
+        //  Now add in random timer element
+        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
+
+        $this->convert_to_xml_element();
+    }
+}
+
 class results_collector extends main_element {
     function __construct($name, $guiclass) {
         parent::__construct('ResultCollector', $guiclass, 'ResultCollector', $name);
@@ -1045,6 +1124,13 @@ class jmeter {
                 } else {
                     $this->testplan_hashtree_constructor->add_child(new random_timer("Failed to insert quiz $quiz->cmid due to $quiz_xml->error", 'false'));
                 }
+            }
+        }
+
+        //  Add the chat testplan
+        if(!empty($jmeter_data['chat'])) {
+            foreach($jmeter_data['chat'] as $chat) {
+                $this->testplan_hashtree_constructor->add_child(new chat_test($chat));
             }
         }
 
