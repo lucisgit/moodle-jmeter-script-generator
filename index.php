@@ -1256,6 +1256,11 @@ class jmeter {
                     }
                 }
             }
+            if ($type == 'chat') {
+                foreach($_SESSION['loadtesting_data'][$type] as &$activity) {
+                    $activity->ajax = (isset($data->ajax)) ? $data->ajax : 0;
+                }
+            }
         }
 
         //  Make the jQuery script
@@ -1540,6 +1545,7 @@ class jmeter {
                                 <td class="center small bot_border">Test All</td>
                                 <td class="center small bot_border">Test x</td>
                                 <td class="center small bot_border">Activities to Test</td>
+                                <td class="center small bot_border">Options</td>
                             </tr>
                             <?php
                                 function create_selector_row($type, $type_activities) {
@@ -1571,6 +1577,15 @@ class jmeter {
 
                                                     ?>
                                                 </select>
+                                            </td>
+                                            <td class="small">
+                                                <?php
+                                                    switch ($type) {
+                                                        case 'chat':
+                                                            echo "<input class=\"input border\" type=\"checkbox\" name=\"data[$type][ajax]\" value=\"1\"/> Use AJAX chat box";
+                                                        break;
+                                                    }
+                                                ?>
                                             </td>
                                         </tr>
                                     <?php
