@@ -1,0 +1,24 @@
+I came a cropper with this one so I thought I'd write a quick readme
+for anyone else looking for the answer...
+
+If you want to load test a moodle quiz with jmeter, the quiz will not
+be recognised if it contains a question of any of these types:
+  Calculated
+  Calculated multichoice
+  Calculated Simple
+  Embedded answers (Cloze)
+  Random short-answer matching
+
+And the annoying part is that there is no warning when a quiz is dropped.
+
+In summary, these types of question are okay to use for load testing:
+  Numerical
+  Short answer
+  True/False
+  Matching
+  Multiple choice
+  Essay
+  Description
+
+Iain Fothergill - LUNS Ltd. <iain.fothergill@luns.net.uk>
+
