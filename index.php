@@ -990,15 +990,9 @@ class quiz_test extends master_test {
         //  View quiz page
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Quiz', 'mod/quiz/view.php', array('id'=>$quiz_cmid)));
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
-
         //  Attempt quiz page
         $regex = array(new regex("Find attempt ID", 'attempt_id', '<input.*?name="attempt".*?value="(.*?)".*?\/>'));
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Start Attempt - page 0', 'mod/quiz/attempt.php', array('id'=>$quiz_cmid), false, $regex));
-
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
 
         //  Get the questions
         $questions = quiz_get_questions($quiz->id);
@@ -1042,9 +1036,6 @@ class quiz_test extends master_test {
             //  Start Attempt above), don't visit it again.
             if($page > 0) {
                 $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View quiz - page '.$page, 'mod/quiz/attempt.php', array('attempt'=>'${attempt_id}', 'page'=>$page)));
-
-                //  Now add in random timer element
-                $this->threadgroup_hashtree->add_child(new random_timer($this->name));
             }
 
             //  Now work out what data to submit for this page!
@@ -1074,15 +1065,15 @@ class quiz_test extends master_test {
                         $submit_data
                 );
                 $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Submit quiz data - page '.$page.'', 'mod/quiz/processattempt.php', $submit_data, (object) array('method'=>'POST')));
-
-                //  Now add in random timer element
-                $this->threadgroup_hashtree->add_child(new random_timer($this->name));
             }
             $page++;
         }
 
         //  Finish and submit all!
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Finsih Attempt', 'mod/quiz/processattempt.php', array('attempt'=>'${attempt_id}','page'=>0,'finishattempt'=>'1','questionids'=>''), (object) array('method'=>'POST')));
+
+        //  Now add in random timer element
+        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
 
         $this->convert_to_xml_element();
     }
@@ -1622,7 +1613,7 @@ class jmeter {
                             <tr>
                                 <td class="center small bot_border">Activity Type</td>
                                 <td class="center small bot_border">Test All</td>
-                                <td class="center small bot_border">Test x</td>
+                                <td class="center small bot_border">Test x random activities</td>
                                 <td class="center small bot_border">Activities to Test</td>
                                 <td class="center small bot_border">Options</td>
                             </tr>
