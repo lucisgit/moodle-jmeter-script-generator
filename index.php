@@ -1317,6 +1317,7 @@ class jmeter {
                             $rand  = rand(0, $count-1);
                         }
                         $jmeter_data[$type][] = $_SESSION['loadtesting_data'][$type][$rand];
+                        $selected[] = $rand;
                     }
                 }
             } else {
