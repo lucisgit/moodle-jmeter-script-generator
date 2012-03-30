@@ -186,6 +186,8 @@ class main_element extends xml_element {
 
         if(!empty($name)) {
             $this->attributes['name'] = $name;
+        } else {
+            $this->attributes['name'] = 'NotSet';
         }
         if(!empty($elementtype)) {
             $this->attributes['elementType'] = $elementtype;
@@ -324,6 +326,7 @@ class httpsampler extends http_request_defaults {
     function httpsampler_extra($properties=false) {
         $defaults                    = new Object();
         $defaults->method            = 'GET';
+        $defaults->name              = 'SomeName';
         $defaults->follow_redirects  = 'true';
         $defaults->use_keepalive     = 'false';
         $defaults->auto_redirects    = 'true';
@@ -354,6 +357,7 @@ class httpsampler extends http_request_defaults {
         $this->add_child(new stringprop("{$htstr}.mimetype",          $properties->mimetype));
         $this->add_child(new   boolprop("{$htstr}.monitor",           $properties->monitor));
         $this->add_child(new stringprop("{$htstr}.embedded_url_re",   $properties->embedded_url_re));
+        $this->add_child(new stringprop("{$htstr}.name",              'SomeName'));
     }
 }
 
@@ -1201,6 +1205,9 @@ class jmeter {
                 } else {
                     $this->testplan_hashtree_constructor->add_child(new random_timer("Failed to insert quiz $quiz->cmid due to $quiz_xml->error", 'false'));
                 }
+// echo('<pre>');
+// var_dump($quiz_xml);
+// echo('</pre>');
             }
         }
 
