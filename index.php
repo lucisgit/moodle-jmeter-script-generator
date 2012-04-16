@@ -1229,8 +1229,8 @@ class jmeter {
     }
 }
 
-    require_once(dirname(__FILE__) . '/../../../config.php');
-    require_once($CFG->dirroot.'/'.$CFG->admin.'/report/loadtesting/LoremIpsum.class.php');
+    require_once(dirname(__FILE__) . '/../../config.php');
+    require_once($CFG->dirroot.'/report/loadtesting/LoremIpsum.class.php');
     require_once($CFG->libdir.'/adminlib.php');
 
     //  Check to see if we have had the form posted, if so we want to send the zip file!
