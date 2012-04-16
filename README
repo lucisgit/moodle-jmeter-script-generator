@@ -1,0 +1,12 @@
+*******************************
+*** jMeter Script Generator ***
+*******************************
+
+The jMeter report generation feature for Moodle . Written by James Brisland.
+
+Installation:
+
+For Moodle 2.1 and earlier, copy directory content to admin/report/loadtesting directory.
+For Moodle 2.2 onwards, please use master branch.
+
+For the manual please refer to: http://www.open.ac.uk/blogs/XHProf/?page_id=64
