@@ -1243,11 +1243,14 @@ class jmeter {
     require_once(dirname(__FILE__) . '/../../config.php');
     require_once($CFG->dirroot.'/report/loadtesting/LoremIpsum.class.php');
     require_once($CFG->libdir.'/adminlib.php');
+    require_once($CFG->libdir.'/enrollib.php');
+    require_once($CFG->dirroot . '/enrol/self/lib.php');
 
     //  Check to see if we have had the form posted, if so we want to send the zip file!
     if (!empty($_POST['action']) && $_POST['action'] == 'users') {
 
         $user_count = intval($_POST['users']);
+        $userids = array();
 
         if(empty($user_count)) {
             print_error('You have not specified how many users to test with');
@@ -1277,8 +1280,10 @@ class jmeter {
 
                 //  If we have been asked to generate the moodle accounts generate them
                 //  now. First we need to check the account doesn't already exist
-                if(!$DB->get_record('user', array('email' => $user->email))) {
-                    $DB->insert_record('user', $user);
+                if($existinguser = $DB->get_record('user', array('email' => $user->email))) {
+                    $userids[] = $existinguser->id;
+                } else {
+                    $userids[] = $DB->insert_record('user', $user);
                 }
             }
 
@@ -1290,6 +1295,7 @@ class jmeter {
         //  Now we need to add the user and loop info into the jmeter data
         $jmeter_data['users'] = $user_count;
         $jmeter_data['loops'] = intval($_POST['loops']);
+        $jmeter_data['courses'] = array();
         //$jmeter_data['login'] = $_POST['user_type'];
 
         //  Now we need to work out which activities we are doing
@@ -1341,6 +1347,43 @@ class jmeter {
                 foreach($_SESSION['loadtesting_data'][$type] as &$activity) {
                     $activity->ajax = (isset($data->ajax)) ? $data->ajax : 0;
                 }
+            }
+
+            // Build the complete list of courses
+            foreach ($jmeter_data[$type] as $element) {
+                $jmeter_data['courses'][$element->course_id] = $element->course_id;
+            }
+        }
+
+        $selfplugin = enrol_get_plugin('self');
+        foreach ($jmeter_data['courses'] as $courseid) {
+            $course = $DB->get_record('course', array('id' => $courseid));
+            // Check whether the loadtesting enrolment mechanism exists
+            $instances = enrol_get_instances($course->id, false);
+            $enrolinstance = null;
+
+            foreach ($instances as $instance) {
+                if ($instance->enrol === 'self' && $instance->name === 'loadtesting') {
+                    $enrolinstance = $instance;
+                }
+            }
+
+            if ($enrolinstance === null) {
+                // Create a new enrol instance
+                $fields = array(
+                    'status'        => 1,
+                    'name'          => 'loadtesting',
+                );
+                $enrolinstance = $selfplugin->add_instance($course, $fields);
+                $enrolinstance = $DB->get_record('enrol', array('id' => $enrolinstance));
+            }
+
+            // Ensure that it's enabled
+            $selfplugin->update_status($enrolinstance, ENROL_INSTANCE_ENABLED);
+
+            // Assign all of the test users to the instance
+            foreach ($userids as $userid) {
+                $selfplugin->enrol_user($enrolinstance, $userid);
             }
         }
 
