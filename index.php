@@ -246,7 +246,7 @@ class http_request_defaults extends main_element {
     function httpsampler_defaults($properties=false) {
         global $CFG;
         $defaults                    = new Object();
-        $defaults->domain            = str_replace('http://', '', $CFG->wwwroot);
+        $defaults->domain            = preg_replace('_https?://_', '', $CFG->wwwroot);
 
         //  This is for dev only, won't do anything on live!
         //  Find the first /
@@ -261,6 +261,10 @@ class http_request_defaults extends main_element {
         $defaults->protocol          = false;
         $defaults->contentEncoding   = false;
         $defaults->path              = false;
+
+        if ($defaults->domain != $CFG->wwwroot) {
+            $defaults->protocol = preg_replace('_^(https?)://.*$_', '$1', $CFG->wwwroot);
+        }
 
         if(empty($properties)) {
             $properties = clone($defaults);
@@ -1154,7 +1158,7 @@ class jmeter {
         global $CFG;
 
         //  Define the moodle path
-        $site = str_replace('http://', '', $CFG->wwwroot);
+        $site = preg_replace('_https?://_', '', $CFG->wwwroot);
         list($site, $path) = explode('/', $site, 2);
 
         define('MOODLE_PATH', $path);
