@@ -521,6 +521,16 @@ class moodle_login extends xml_element {
     }
 }
 
+class moodle_logout extends xml_element {
+    function __construct($name_part) {
+        $arguments = array('sesskey'=>'${sesskey}');
+
+        //  Create a new HTTPSampler
+        $sampler = new httpsampler($name_part.' Logout from site', 'login/index.php', $arguments, (object) array('method'=>'GET'));
+        $this->copy_to_this($sampler);
+    }
+}
+
 class master_test extends xml_element {
     var $threadgroup;
     var $threadgroup_hashtree;
@@ -569,6 +579,14 @@ class master_test extends xml_element {
         //  View course page
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Course', 'course/view.php', array('id'=>$this->courseid)));
 
+    }
+
+    protected function test_finish() {
+        // Perform logout
+        $this->threadgroup_hashtree->add_child(new moodle_logout($this->name));
+
+        //  Now add in random timer element
+        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
     }
 }
 
@@ -723,8 +741,7 @@ class forum_test extends master_test {
             $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
 
         }
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
+        $this->test_finish();
 
         $this->convert_to_xml_element();
     }
@@ -846,8 +863,7 @@ class chat_test extends master_test {
         // Add loopcontroller
         $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
+        $this->test_finish();
 
         $this->convert_to_xml_element();
     }
@@ -882,8 +898,7 @@ class chat_test extends master_test {
         // Add loopcontroller
         $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
+        $this->test_finish();
 
         $this->convert_to_xml_element();
     }
@@ -1080,8 +1095,7 @@ class quiz_test extends master_test {
         //  Finish and submit all!
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Finsih Attempt', 'mod/quiz/processattempt.php', array('attempt'=>'${attempt_id}','page'=>0,'finishattempt'=>'1','questionids'=>''), (object) array('method'=>'POST')));
 
-        //  Now add in random timer element
-        $this->threadgroup_hashtree->add_child(new random_timer($this->name));
+        $this->test_finish();
 
         $this->convert_to_xml_element();
     }
