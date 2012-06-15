@@ -9,82 +9,6 @@
      * @package loadtesting
      */
 
-function quiz_get_questions($quiz_id) {
-    global $USER,$CFG,$QTYPES,$_SESSION, $DB;
-    include_once($CFG->dirroot.'/mod/quiz/locallib.php');
-
-    //  Check to see we haven't already gotten these questions. If we have return from the session
-    if(!empty($_SESSION['retrived_question_ids'][$quiz_id])) {
-        $question_ids = $_SESSION['retrived_question_ids'][$quiz_id];
-    } else {
-        $question_ids = $DB->get_records('quiz_question_instances', array('quiz' => $quiz_id));
-    }
-
-    $questions = array();
-    if(empty($question_ids)) {
-        return false;
-    }
-    $_SESSION['retrived_question_ids'][$quiz_id] = $question_ids;
-
-    if(!empty($_SESSION['retrived_questions'][$quiz_id])) {
-        $questions = $_SESSION['retrived_questions'][$quiz_id];
-    } else {
-        foreach($question_ids as $index => $question) {
-            $db_question = $DB->get_record('question', array('id' => $question->question));
-            $questions[$db_question->id] = $db_question;
-        }
-        get_question_options($questions);
-        $_SESSION['retrived_questions'][$quiz_id] = $questions;
-    }
-
-    return $questions;
-}
-
-/* Returns the question type if unsupported question found, false otherwise */
-function quiz_check_for_unsupported_questions($questions) {
-    foreach($questions as $question) {
-        $check = quiz_question_type($question);
-        if(empty($check) && !question_type_is_info($question)) {
-            return $question->qtype;
-        }
-    }
-    return false;
-}
-
-function question_type_is_info($question) {
-    if($question->qtype == 'description') {
-        return true;
-    }
-    return false;
-}
-
-function quiz_question_type($question) {
-    switch($question->qtype) {
-        case 'numerical':
-            $key = 'numerical';
-            break;
-        case 'shortanswer':
-            $key = 'shortanswer';
-            break;
-        case 'truefalse':
-            $key = 'radio';
-            break;
-        case 'match':
-            $key = 'match';
-            break;
-        case 'multichoice':
-            $key = 'multichoice';
-            break;
-        case 'essay':
-            $key = 'essay';
-            break;
-        default:
-            return false;
-            break;
-    }
-    return $key;
-}
-
 /*
  * This class takes one of my defined xml_elements and adds it as a child element
  * to a simple xml structure given.
@@ -573,7 +497,7 @@ class master_test extends xml_element {
         //  Now we need to add in the site login
         $this->threadgroup_hashtree->add_child(new moodle_login($this->name));
 
-        //  Add in the URLRewrite Modifier which automatically adds in sesskey to all post or get forums
+        //  Add in the URLRewrite Modifier which automatically adds in sesskey to all post or get forms
         $this->threadgroup_hashtree->add_child(new url_rewrite($this->name));
 
         //  View course page
@@ -629,278 +553,6 @@ class regex extends main_element {
 
         //  Add in empty hashtree
         $this->add_sibling(new hashtree());
-    }
-}
-
-class forum_test extends master_test {
-    var $forum_view;
-    var $view_params;
-    var $forum_post;
-    var $posts;
-    var $replys;
-    var $post_regex;
-
-    function __construct($forum) {
-        global $DB;
-
-        parent::__construct();
-        //  Get course modules record
-        $cm                = $DB->get_record('course_modules', array('id' => $forum->cmid));
-        $this->name        = "[FORUM {$forum->cmid}:{$forum->name}]";
-        $this->forum_view  = 'mod/forum/view.php';
-        $this->view_params = array('id'=>$cm->id);
-        $this->forum_post  = 'mod/forum/post.php';
-        $this->post_params = array('forum'=>$cm->instance);
-        $this->posts       = 1;
-        $this->replys      = 2;
-        $this->courseid    = $cm->course;
-
-        //  Prepare all the regex's for insert into the post page hashtree
-        $this->post_to_get = array('message[itemid]', 'forum', 'discussion', 'parent', 'userid', 'groupid', 'edit', 'reply', 'timestart', 'timeend', 'sesskey', '_qf__mod_forum_post_form', 'course');
-        $post_regex = array();
-
-        $search  = array('[', ']');
-        $replace = array('\[', '\]');
-
-        foreach($this->post_to_get as $name) {
-            $regex_name = str_replace($search, $replace, $name);
-            $post_regex[] = new regex("$this->name Get $name", $name, '<input.*?name="'.$regex_name.'".*?value="(.*?)".*?\/>');
-        }
-        $this->post_regex = $post_regex;
-
-        //  Prepare the vars to post to the site
-        $this->post_arguments = array(
-            'MAX_FILE_SIZE'   => 512000,
-            'message[text]'   => $this->wordgenerator->getContent(50, 'html'),
-            'message[format]' => 1,
-            'subscribe'       => 0,
-            'submitbutton'    => 'Post to forum'
-        );
-
-        foreach($this->post_to_get as $name) {
-            $this->post_arguments[$name] = '${'.$name.'}';
-        }
-
-        $this->forum_discuss  = 'mod/forum/discuss.php';
-        $this->discuss_params = array('d'=>'${discussionid}');
-        $this->discuss_regex  = array(new regex("$this->name Find random discussion", 'discussionid', 'discuss\.php\?d=(.+?)["\']>testing', '0'));
-        $this->reply_regex    = array(new regex("$this->name Find random reply", 'replyid', '\/mod\/forum\/post\.php\?reply=([^\\\'"]*?)["\\\']', '0'));
-        $this->reply_params   = array('reply'=>'${replyid}', 'draft'=>0);
-
-        $this->forum_startup();
-    }
-
-    function forum_startup($remove_id_in_reply=false) {
-        $this->test_startup();
-
-        //  View forum page
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Forum', $this->forum_view, $this->view_params));
-
-        //  Make a post (to insure there is at least one post), find a random discussion, find a reply, make a post
-        for($i=1; $i<=$this->posts; $i++) {
-            //  Store the id if it hasn't yet been removed, else put it back in if we are looping around again
-            if(!empty($remove_id_in_reply) && !empty($this->post_arguments['id'])) {
-                $id = $this->post_arguments['id'];
-            } else if(!empty($remove_id_in_reply) && empty($this->post_arguments['id']) && !empty($id)) {
-                $this->post_arguments['id'] = $id;
-            }
-
-            //  View forum post page and regex's to get data
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View First Discussion Post Data', $this->forum_post, $this->post_params, false, $this->post_regex));
-
-            //  Change the subject of the post
-            $this->post_arguments['subject'] = 'testing ${username}';
-
-            //  Post new discussion
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Post to Discussion', $this->forum_post, $this->post_arguments, (object) array('method' => 'POST')));
-
-            //  Add in the loopconroller
-            $this->threadgroup_hashtree->add_child(new loopcontroller($this->name, $this->replys, $loop_forever='false'));
-
-            //  Add in the loopconroller hashtree
-            $loopcontroller_hashtree = new hashtree();
-
-            //  Find random discussion
-            $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Find random discussion', $this->forum_view, $this->view_params, false, $this->discuss_regex));
-
-            //  View discussion
-            $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Random Discussion & find random reply', $this->forum_discuss, $this->discuss_params, false, $this->reply_regex));
-
-            //  View random post page passing regex's to get data from
-            $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Random Reply & get post data', $this->forum_post, $this->reply_params, false, $this->post_regex));
-
-            //  Change the subject of the reply
-            $this->post_arguments['subject'] = 'Reply to post ${replyid}.';
-            if(!empty($remove_id_in_reply) && isset($this->post_arguments['id'])) {
-                unset($this->post_arguments['id']);
-            }
-
-            //  Post to random reply
-            $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Post to Random Reply', $this->forum_post, $this->post_arguments, (object) array('method' => 'POST')));
-
-            $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
-
-        }
-        $this->test_finish();
-
-        $this->convert_to_xml_element();
-    }
-}
-
-class chat_test extends master_test {
-    var $chat_view;
-    var $view_params;
-    var $chat_post;
-    var $post_params;
-    var $posts;
-    var $newonly;
-    var $post_regex;
-
-    function __construct($chat) {
-        global $DB;
-
-        parent::__construct();
-        //  Get course modules record
-        $cm                = $DB->get_record('course_modules', array('id' => $chat->cmid));
-        //  Get course modules record
-        $this->name        = "[CHAT {$chat->cmid}:{$chat->name}]";
-        $this->chat_view   = 'mod/chat/view.php';
-        $this->view_params = array('id'=>$chat->cmid);
-
-        if (!$chat->ajax) {
-            $this->chat_post   = 'mod/chat/gui_basic/index.php';
-            $this->post_params = array('id'=>$chat->id);
-            $this->posts       = 5;
-            $this->newonly     = 0;
-            $this->courseid    = $cm->course;
-
-            //  Prepare all the regex's for insert into the post page hashtree
-            $this->post_to_get = array('last', 'groupid', 'sesskey');
-            $post_regex = array();
-
-            foreach($this->post_to_get as $name) {
-                $post_regex[] = new regex("$this->name Get $name", $name, '<input.*?name="'.$name.'".*?value="(.*?)".*?\/>');
-            }
-            $this->post_regex = $post_regex;
-
-            //  Prepare the vars to post to the site
-            $this->post_arguments = array(
-                'message'   => $this->wordgenerator->getContent(10, 'txt'),
-                'id'        => $chat->id,
-            );
-
-            foreach($this->post_to_get as $name) {
-                $this->post_arguments[$name] = '${'.$name.'}';
-            }
-
-            $this->chat_basic_startup();
-        }
-        else {
-            $this->chat_window   = 'mod/chat/gui_ajax/index.php';
-            $this->window_params = array('id'=>$chat->id);
-            $this->window_regex  = array(new regex("$this->name Get SID", 'chat_sid', '"sid":"(\w+)"'));
-
-            // chat init
-            $this->chat_init     = 'mod/chat/chat_ajax.php';
-            $this->init_params   = array('action'=>'init', 'chat_init'=>1, 'chat_sid'=>'${chat_sid}', 'theme'=>'undefined');
-            // post chat message
-            $this->chat_post     = 'mod/chat/chat_ajax.php?action=chat';
-            $this->post_params = array('chat_message'=>$this->wordgenerator->getContent(10, 'txt'), 'chat_sid'=>'${chat_sid}', 'theme'=>'compact');
-            // update chat
-            $this->chat_update   = 'mod/chat/chat_ajax.php?action=update';
-            $this->update_params = array('chat_lastrow'=>'false', 'chat_lasttime'=>0, 'chat_sid'=>'${chat_sid}', 'theme'=>'compact');
-
-            $this->posts       = 5;
-            $this->courseid    = $cm->course;
-
-            //  Prepare all the regex's for insert into the post page hashtree
-            $this->post_to_get = array('lasttime', 'lastrow');
-            $post_regex = array();
-
-            foreach($this->post_to_get as $name) {
-                $post_regex[] = new regex("$this->name Get $name", 'chat_' . $name, '"'.$name.'":"(\w+)"');
-            }
-            $this->post_regex = $post_regex;
-
-            //  Prepare the vars to post to the site
-            $this->post_update = array(
-                'chat_sid'  => '${chat_sid}',
-                'theme'     => 'compact',
-            );
-
-            foreach($this->post_to_get as $name) {
-                $this->post_update['chat_'.$name] = '${chat_'.$name.'}';
-            }
-
-            $this->chat_ajax_startup();
-        }
-    }
-
-    function chat_basic_startup() {
-        $this->test_startup();
-
-        //  View chat page
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat page', $this->chat_view, $this->view_params));
-
-         //  Open chat window and regex's to get data
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_post, $this->post_params, false, $this->post_regex));
-
-        //  Add in the loopcontroller
-        $this->threadgroup_hashtree->add_child(new loopcontroller($this->name, $this->posts, $loop_forever='false'));
-
-        //  Add in the loopconroller hashtree
-        $loopcontroller_hashtree = new hashtree();
-
-        //  Post to random reply
-        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Post Chat Message', $this->chat_post, $this->post_arguments, (object) array('method' => 'POST')));
-
-        $this->post_params['newonly'] = $this->newonly;
-        $this->post_params['last'] = '${last}';
-
-        //  Refesh chat window and regex's to get data
-        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_post, $this->post_params, false, $this->post_regex));
-
-        // Add loopcontroller
-        $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
-
-        $this->test_finish();
-
-        $this->convert_to_xml_element();
-    }
-
-    function chat_ajax_startup() {
-        $this->test_startup();
-
-        //  View chat page
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat page', $this->chat_view, $this->view_params));
-
-        //  Open chat window and regex's to get data
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_window, $this->window_params, false, $this->window_regex));
-
-        //  Chat init
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Init Chat', $this->chat_init, $this->init_params, (object) array('method' => 'POST')));
-
-        //  Chat initial update
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Init Initial Update', $this->chat_update, $this->update_params, (object) array('method' => 'POST'), $this->post_regex));
-
-        //  Add in the loopcontroller
-        $this->threadgroup_hashtree->add_child(new loopcontroller($this->name, $this->posts, $loop_forever='false'));
-
-        //  Add in the loopconroller hashtree
-        $loopcontroller_hashtree = new hashtree();
-
-        //  Post to random reply
-        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Post Chat Message', $this->chat_post, $this->post_params, (object) array('method' => 'POST')));
-
-        //  Refesh chat window and regex's to get data
-        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Init Update', $this->chat_update, $this->post_update, (object) array('method' => 'POST'), $this->post_regex));
-
-        // Add loopcontroller
-        $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);
-
-        $this->test_finish();
-
-        $this->convert_to_xml_element();
     }
 }
 
@@ -976,190 +628,111 @@ class graph_full_results extends results_collector {
     }
 }
 
-class quiz_test extends master_test {
-    var $quiz_view;
-    var $pages;
+abstract class test_setup {
 
-    function __construct($quiz_cmid) {
+    /**
+     * Store of the course_modules found for this test class
+     */
+    public $cms = array();
+
+    /**
+     * The name of the test class
+     */
+    private $name;
+
+    public $count = 0;
+
+    /**
+     * Constructor for the test_setup class
+     */
+    public function __construct() {
+        $this->name = preg_replace('/_test_setup$/', '', get_class($this));
+    }
+
+    /**
+     * Retrieve a list of the course module instances for the specified course
+     *
+     * @param integer $course The course ID number
+     * @return array The list of course module instances
+     */
+    public function get_cms($course) {
         global $DB;
 
-        $cm = $DB->get_record('course_modules', array('id' => $quiz_cmid));
-
-        //  If we can't get the $cm something has gone wrong
-        //  with this quiz. Marked as failed quiz and exit
-        if(empty($cm)) {
-            $this->failed = true;
-            $this->error = "Cannot load course module";
-            return false;
-        }
-
-        //  Setup vars
-        $this->name     = "[QUIZ $quiz_cmid]";
-        $this->courseid = $cm->course;
-
-        //  Now we need to load all the quiz details!
-        $quiz = $DB->get_record('quiz', array('id' => $cm->instance));
-
-        //  If we can't get the $quiz something has gone wrong
-        //  with this quiz. Marked as failed quiz and exit
-        if(empty($quiz)) {
-            $this->failed = true;
-            $this->error = "Cannot load quiz";
-            return false;
-        }
-
-        $this->test_startup();
-
-        //  View quiz page
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Quiz', 'mod/quiz/view.php', array('id'=>$quiz_cmid)));
-
-        //  Attempt quiz page
-        $regex = array(new regex("Find attempt ID", 'attempt_id', '<input.*?name="attempt".*?value="(.*?)".*?\/>'));
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Start Attempt - page 0', 'mod/quiz/attempt.php', array('id'=>$quiz_cmid), false, $regex));
-
-        //  Get the questions
-        $questions = quiz_get_questions($quiz->id);
-
-        //  If we can't get the $questions something has gone wrong
-        //  with this quiz. Marked as failed quiz and exit
-        if(empty($questions)) {
-            $this->failed = true;
-            $this->error = "Cannot load questions";
-            return false;
-        }
-
-        //  Now we have all of the questions, and the answers. What we want to
-        //  do now is reproduce the path of a user through the quiz.
-
-        //  First loop through all the questions and construct the posted data
-        $post_data = array();
-        foreach($questions as $qid => $question) {
-            if(!question_type_is_info($question)) {
-                //  If we're not on an info page we want to submit the data
-                //  depending on the data type
-                $key = quiz_question_type($question);
-                if(empty($key)) {
-                    $this->failed = true;
-                    $this->error = "The quiz contains an unsupported question type $question->qtype";
-                    return false;
-                }
-                $fn = "{$key}_correct_post_data";
-                $post_data[$question->id] = $this->$fn($question);
-            }
-        }
-
-        //  Now I've got all the post data I need to work out the layout of the quiz
-        $this->set_questions_per_page($quiz->questions);
-
-        //  Loop through all the questions and either visit the page if it's just
-        //  info, or visit then submit data if it's a question
-        $page = 0;
-        foreach($this->pages as $question_ids) {
-            //  If we are on the first page we've already visited it (see the
-            //  Start Attempt above), don't visit it again.
-            if($page > 0) {
-                $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View quiz - page '.$page, 'mod/quiz/attempt.php', array('attempt'=>'${attempt_id}', 'page'=>$page)));
-            }
-
-            //  Now work out what data to submit for this page!
-            $submit_data = array();
-            $qids = false;
-            foreach($question_ids as $id) {
-                //  If we have a question that is not info
-                if(!question_type_is_info($questions[$id])) {
-                    $submit_data = array_merge($submit_data, $post_data[$id]);
-                }
-
-                //  Store which questions are getting submitted
-                if(!empty($qids)) {
-                    $qids .= ',';
-                }
-                $qids .= $id;
-            }
-
-            if(!empty($submit_data)) {
-                //  Now submit the data
-                $submit_data = array_merge(
-                        array(
-                            'attempt'     => '${attempt_id}',
-                            'page'        => $page,
-                            'questionids' => $qids
-                        ),
-                        $submit_data
-                );
-                $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Submit quiz data - page '.$page.'', 'mod/quiz/processattempt.php', $submit_data, (object) array('method'=>'POST')));
-            }
-            $page++;
-        }
-
-        //  Finish and submit all!
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Finsih Attempt', 'mod/quiz/processattempt.php', array('attempt'=>'${attempt_id}','page'=>0,'finishattempt'=>'1','questionids'=>''), (object) array('method'=>'POST')));
-
-        $this->test_finish();
-
-        $this->convert_to_xml_element();
+        $cms = $DB->get_records_sql('
+            SELECT
+                cm.id           AS cmid,
+                mod.name        AS name,
+                mod.id          AS id,
+                course.fullname AS course_name,
+                course.id       AS course_id
+            FROM {course_modules} cm
+            JOIN {' . $this->get_table_name() . '} mod
+            ON mod.id = cm.instance
+            JOIN {course} course
+            ON course.id = cm.course
+            JOIN {modules} modules
+            ON cm.module = modules.id
+            WHERE cm.visible = 1
+            AND cm.course = ?
+            AND modules.name = ?
+            ', array($course, $this->get_name()));
+        return $cms;
     }
 
-    private function numerical_correct_post_data($question) {
-        foreach($question->options->answers as $answer) {
-            if($answer->fraction == 1) {
-                return array($question->name_prefix.'answer'=>$answer->answer);
-            }
+    /**
+     * The name of the test class
+     *
+     * @return String the name of the course module
+     */
+    public function get_name() {
+        return $this->name;
+    }
+
+    /**
+     * The name of the table in the moodle database for this course module.
+     * This is used in the get_cms() function
+     *
+     * @return String the name of the table for the course module
+     */
+    public function get_table_name() {
+        return $this->get_name();
+    }
+
+    /**
+     * The test class name
+     *
+     * @return String the name of the test class to use
+     */
+    public function get_test_name() {
+        return $this->get_name() . '_test';
+    }
+
+    /**
+     * Any optional settings
+     *
+     * @return String HTML to output any optional settings
+     */
+    public function optional_settings() {
+        return '';
+    }
+
+    public function process_optional_settings() {
+    }
+
+    /**
+     * Create a test plan for the specified activities
+     *
+     * @param object $jmeter The jmeter class
+     * @param array $activities The list of activities
+     * @return object The completed test plan
+     */
+    public function create_testplan($jmeter, $activities) {
+        $class = $this->get_test_name();
+        foreach($activities as $activity) {
+            $jmeter->testplan_hashtree_constructor->add_child(new $class($activity));
         }
     }
 
-    private function shortanswer_correct_post_data($question) {
-        foreach($question->options->answers as $answer) {
-            if($answer->fraction == 1) {
-                return array($question->name_prefix=>$answer->answer);
-            }
-        }
-    }
-
-    private function radio_correct_post_data($question) {
-        foreach($question->options->answers as $answer) {
-            if($answer->fraction == 1) {
-                return array($question->name_prefix=>$answer->id);
-            }
-        }
-    }
-
-    private function match_correct_post_data($question) {
-        $return = array();
-        foreach($question->options->subquestions as $subq) {
-            $key = "{$question->name_prefix}{$subq->id}";
-            $return[$key] = $subq->code;
-        }
-        return $return;
-    }
-
-    private function multichoice_correct_post_data($question) {
-        $return = array();
-        foreach($question->options->answers as $answer) {
-            if($answer->fraction > 0) {
-                $key = "{$question->name_prefix}{$answer->id}";
-                $return[$key] = $answer->id;
-            }
-        }
-        return $return;
-    }
-
-    private function essay_correct_post_data($question) {
-        return array($question->name_prefix => "Essay {$question->name_prefix} answer");
-    }
-
-    private function set_questions_per_page($s){
-        //get questions per page
-        $s = str_replace(',0,', 'p', $s);//delete all 0's apart from th elast
-        $s = str_replace(',0', 'p', $s);//delete last 0
-        $tok = strtok($s, 'p');
-        $p=0;
-        $this->pages = array();
-        while ($tok !== false) {
-            $this->pages[] = explode(',', $tok);
-            $tok = strtok("p");
-        }
-    }
 }
 
 class jmeter {
@@ -1169,7 +742,7 @@ class jmeter {
     var $constructor;
 
     function __construct($jmeter_data) {
-        global $CFG;
+        global $CFG, $testclasses;
 
         //  Define the moodle path
         $site = preg_replace('_https?://_', '', $CFG->wwwroot);
@@ -1207,33 +780,8 @@ class jmeter {
         //  Add in the HTTP Defaults
         $this->testplan_hashtree_constructor->add_child(new http_request_defaults());
 
-        //  Add the forum testplan
-        if(!empty($jmeter_data['forum'])) {
-            foreach($jmeter_data['forum'] as $forum) {
-                $this->testplan_hashtree_constructor->add_child(new forum_test($forum));
-            }
-        }
-
-        //  Add the quiz testplan
-        if(!empty($jmeter_data['quiz'])) {
-            foreach($jmeter_data['quiz'] as $quiz) {
-                $quiz_xml = new quiz_test($quiz->cmid);
-                if(empty($quiz_xml->failed)) {
-                    $this->testplan_hashtree_constructor->add_child($quiz_xml);
-                } else {
-                    $this->testplan_hashtree_constructor->add_child(new random_timer("Failed to insert quiz $quiz->cmid due to $quiz_xml->error", 'false'));
-                }
-// echo('<pre>');
-// var_dump($quiz_xml);
-// echo('</pre>');
-            }
-        }
-
-        //  Add the chat testplan
-        if(!empty($jmeter_data['chat'])) {
-            foreach($jmeter_data['chat'] as $chat) {
-                $this->testplan_hashtree_constructor->add_child(new chat_test($chat));
-            }
+        foreach ($jmeter_data['activities'] as $type => $activities) {
+            $testclasses[$type]->create_testplan($this, $activities);
         }
 
         //  Now add in the listeners
@@ -1259,6 +807,24 @@ class jmeter {
     require_once($CFG->libdir.'/adminlib.php');
     require_once($CFG->libdir.'/enrollib.php');
     require_once($CFG->dirroot . '/enrol/self/lib.php');
+
+    // The list of available test classes
+    $testclasses = array();
+    // Include all of the possible test classes
+    $classdir = dirname(__FILE__) . '/classes/';
+    $dirlist = scandir($classdir);
+    foreach ($dirlist as $class) {
+        $testclassdir = $classdir . $class;
+        if (is_dir($testclassdir)) {
+            if (file_exists($testclassdir . '/lib.php')) {
+                require_once($testclassdir . '/lib.php');
+                $classname = $class . '_test_setup';
+                if (class_exists($classname)) {
+                    $testclasses[$class] = new $classname();
+                }
+            }
+        }
+    }
 
     //  Check to see if we have had the form posted, if so we want to send the zip file!
     if (!empty($_POST['action']) && $_POST['action'] == 'users') {
@@ -1310,6 +876,7 @@ class jmeter {
         $jmeter_data['users'] = $user_count;
         $jmeter_data['loops'] = intval($_POST['loops']);
         $jmeter_data['courses'] = array();
+        $jmeter_data['activities'] = array();
         //$jmeter_data['login'] = $_POST['user_type'];
 
         //  Now we need to work out which activities we are doing
@@ -1320,7 +887,7 @@ class jmeter {
             //  Now we need to check what the user has requested
             if(!empty($data->all)) {
                 //  The user wants to do all of this type!
-                $jmeter_data[$type] = $_SESSION['loadtesting_data'][$type];
+                $jmeter_data['activities'][$type] = $_SESSION['loadtesting_data'][$type];
             } else if(!empty($data->count)) {
                 //  The user has selected to do x random selection of the type
                 $count = $_SESSION['loadtesting_data']["{$type}_count"];
@@ -1329,7 +896,7 @@ class jmeter {
                 //  requested to do more activities than there is
                 if($data->count >= $count) {
                     //  We actally want to do all activities of this type
-                    $jmeter_data[$type] = $_SESSION['loadtesting_data'][$type];
+                    $jmeter_data['activities'][$type] = $_SESSION['loadtesting_data'][$type];
                 } else {
                     //  We want to select a random $count of the activity type
                     $selected = array();
@@ -1338,7 +905,7 @@ class jmeter {
                         while(in_array($rand, $selected)) {
                             $rand  = rand(0, $count-1);
                         }
-                        $jmeter_data[$type][] = $_SESSION['loadtesting_data'][$type][$rand];
+                        $jmeter_data['activities'][$type][] = $_SESSION['loadtesting_data'][$type][$rand];
                         $selected[] = $rand;
                     }
                 }
@@ -1351,21 +918,20 @@ class jmeter {
                         //  Find the object... this could be slow should do a different way!
                         foreach($_SESSION['loadtesting_data'][$type] as $activity) {
                             if($activity->cmid == $cmid) {
-                                $jmeter_data[$type][] = $activity;
+                                $jmeter_data['activities'][$type][] = $activity;
                             }
                         }
                     }
                 }
             }
-            if ($type == 'chat') {
-                foreach($_SESSION['loadtesting_data'][$type] as &$activity) {
-                    $activity->ajax = (isset($data->ajax)) ? $data->ajax : 0;
-                }
-            }
+
+            $testclasses[$type]->process_optional_settings();
 
             // Build the complete list of courses
-            foreach ($jmeter_data[$type] as $element) {
-                $jmeter_data['courses'][$element->course_id] = $element->course_id;
+            if (isset($jmeter_data['activities'][$type])) {
+                foreach ($jmeter_data['activities'][$type] as $element) {
+                    $jmeter_data['courses'][$element->course_id] = $element->course_id;
+                }
             }
         }
 
@@ -1480,161 +1046,39 @@ class jmeter {
         $cat_id = intval($_POST['cat']);
 
         //  Now we have a category we want to loop through all the courses in the cat
-        //  and get any forums and quizes.
-        $forum_mod_id   = $DB->get_field('modules', 'id', array('name' => 'forum'));
-        $quiz_mod_id    = $DB->get_field('modules', 'id', array('name' => 'quiz'));
-        $chat_mod_id    = $DB->get_field('modules', 'id', array('name' => 'chat'));
-
-        $total_forum_count   = 0;
-        $total_quiz_count    = 0;
-        $total_chat_count    = 0;
-
-        $all_forums   = array();
-        $all_quizes   = array();
-        $all_chats   = array();
-
+        //  and get any activities
         $course_rs = $DB->get_recordset('course', array('category' => $cat_id));
+        $totalcount = 0;
         foreach($course_rs as $rec) {
-            //  Check for forums
-            $forums = $DB->get_records_sql("
-                SELECT
-                    cm.id            as cmid,
-                    forum.name       as name,
-                    forum.id         as id,
-                    course.fullname  as course_name,
-                    course.id        as course_id
-                FROM
-                    {$CFG->prefix}course_modules cm
-                JOIN
-                    {$CFG->prefix}forum forum
-                ON
-                    cm.instance = forum.id
-                JOIN
-                    {$CFG->prefix}course course
-                ON
-                    course.id = cm.course
-                WHERE
-                    cm.module = $forum_mod_id
-                AND
-                    cm.visible = 1
-                AND
-                    cm.course = $rec->id
-            ");
-
-            $quizes = $DB->get_records_sql("
-                SELECT
-                    cm.id            as cmid,
-                    quiz.name        as name,
-                    quiz.id          as id,
-                    course.fullname  as course_name,
-                    course.id        as course_id
-                FROM
-                    {$CFG->prefix}course_modules cm
-                JOIN
-                    {$CFG->prefix}quiz quiz
-                ON
-                    cm.instance = quiz.id
-                JOIN
-                    {$CFG->prefix}course course
-                ON
-                    course.id = cm.course
-                WHERE
-                    cm.module = $quiz_mod_id
-                AND
-                    cm.visible = 1
-                AND
-                    cm.course = $rec->id
-            ");
-
-            $chats = $DB->get_records_sql("
-                SELECT
-                    cm.id            as cmid,
-                    chat.name        as name,
-                    chat.id          as id,
-                    course.fullname  as course_name,
-                    course.id        as course_id
-                FROM
-                    {$CFG->prefix}course_modules cm
-                JOIN
-                    {$CFG->prefix}chat chat
-                ON
-                    cm.instance = chat.id
-                JOIN
-                    {$CFG->prefix}course course
-                ON
-                    course.id = cm.course
-                WHERE
-                    cm.module = $chat_mod_id
-                AND
-                    cm.visible = 1
-                AND
-                    cm.course = $rec->id
-            ");
-
-            //  Now we have all the activities we need to check that the quizes have
-            //  questions assigned and those questions are supported
-            if(!empty($quizes)) {
-                foreach($quizes as $index => $quiz) {
-                    //  Load this quizes questions
-                    $questions = quiz_get_questions($quiz->id);
-                    $unsupported_question_type = false;
-
-                    if(!empty($questions)) {
-                        $unsupported_question_type = quiz_check_for_unsupported_questions($questions);
-                    }
-
-                    if(empty($questions) || !empty($unsupported_question_type)) {
-                        //  Quiz doesn't contain any questions, or contains an unsupported type remove it
-                        unset($quizes[$index]);
-                    }
-                }
-            }
-
-            $course_forum_count   = !empty($forums)   ? count($forums)   : 0;
-            $course_quiz_count    = !empty($quizes)   ? count($quizes)   : 0;
-            $course_chat_count    = !empty($chats)   ? count($chats)   : 0;
-
-            $total_forum_count   += $course_forum_count;
-            $total_quiz_count    += $course_quiz_count;
-            $total_chat_count    += $course_chat_count;
-
-            if(!empty($forums)) {
-                $all_forums = array_merge($all_forums, $forums);
-            }
-            if(!empty($quizes)) {
-                $all_quizes = array_merge($all_quizes, $quizes);
-            }
-            if(!empty($chats)) {
-                $all_chats = array_merge($all_chats, $chats);
+            foreach ($testclasses as $testclass) {
+                $cms = $testclass->get_cms($rec->id);
+                $testclass->cms = array_merge($testclass->cms, $cms);
+                $count = count($cms);
+                $testclass->count += $count;
+                $totalcount += $count;
             }
         }
 
-        //  Check if we have any forums/quizes/activities if not redirect back to selection screen
-        if(empty($total_forum_count) && empty($total_quiz_count) && empty($total_chat_count)) {
+        //  Check if we have any activities if not redirect back to selection screen
+        if(!$totalcount >= 1) {
             redirect($_SERVER['PHP_SELF'], 'This category has no activies. Redirect to selection screen', 3);
             exit();
         }
 
+        $_SESSION['loadtesting_data'] = array();
+
         echo '<div style="border:1px solid #ccc;padding:5px; min-width:500px;margin-bottom:5px">';
-        echo "Total Forums: $total_forum_count<br/>";
-        echo "Total Quizes: $total_quiz_count<br/>";
-        echo "Total Chats: $total_chat_count<br/>";
+        foreach ($testclasses as $testclass) {
+            echo "Total " . $testclass->get_name() . ": " . $testclass->count . "<br/>";
+            $_SESSION['loadtesting_data'][$testclass->get_name()] = $testclass->cms;
+            $_SESSION['loadtesting_data'][$testclass->get_name() . '_count'] = $testclass->count;
+        }
         echo '</div>';
 
-        //  Now ask the admin if they would like to test all forums.
+        //  Now ask the admin if they would like to test all activities
         //  If this is the case we will need to generate a user in the CSV
         //  for which ever has the most.
-        $max_users = $total_forum_count;
-
-        $_SESSION['loadtesting_data'] = array(
-            'category'      => $cat_id,
-            'forum'         => $all_forums,
-            'quiz'          => $all_quizes,
-            'chat'          => $all_chats,
-            'forum_count'   => $total_forum_count,
-            'quiz_count'    => $total_quiz_count,
-            'chat_count'    => $total_chat_count,
-        );
+        $_SESSION['loadtesting_data']['category'] = $cat_id;
 
         ?>
         <style>
@@ -1688,6 +1132,7 @@ class jmeter {
                             </tr>
                             <?php
                                 function create_selector_row($type, $type_activities) {
+                                    global $testclasses;
                                     $title = $type;
                                     $type = strtolower($type);
                                     ?>
@@ -1719,24 +1164,15 @@ class jmeter {
                                             </td>
                                             <td class="small">
                                                 <?php
-                                                    switch ($type) {
-                                                        case 'chat':
-                                                            echo "<input class=\"input border\" type=\"checkbox\" name=\"data[$type][ajax]\" value=\"1\"/> Use AJAX chat box";
-                                                        break;
-                                                    }
+                                                    echo $testclasses[$type]->optional_settings();
                                                 ?>
                                             </td>
                                         </tr>
                                     <?php
                                 }
-                                $activities = array(
-                                                'Forum'   => $_SESSION['loadtesting_data']['forum'],
-                                                'Quiz'    => $_SESSION['loadtesting_data']['quiz'],
-                                                'Chat'    => $_SESSION['loadtesting_data']['chat'],
-                                            );
-                                foreach($activities as $type => $type_activities) {
-                                    if(!empty($type_activities)) {
-                                        create_selector_row($type, $type_activities);
+                                foreach ($testclasses as $testclass) {
+                                    if ($testclass->count) {
+                                        create_selector_row($testclass->get_name(), $testclass->cms);
                                     }
                                 }
                             ?>
