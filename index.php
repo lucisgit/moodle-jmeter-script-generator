@@ -1356,6 +1356,7 @@ class jmeter {
         }
 
         $selfplugin = enrol_get_plugin('self');
+        $role = $DB->get_record('role', array('shortname' => 'student'));
         foreach ($jmeter_data['courses'] as $courseid) {
             $course = $DB->get_record('course', array('id' => $courseid));
             // Check whether the loadtesting enrolment mechanism exists
@@ -1383,7 +1384,7 @@ class jmeter {
 
             // Assign all of the test users to the instance
             foreach ($userids as $userid) {
-                $selfplugin->enrol_user($enrolinstance, $userid);
+                $selfplugin->enrol_user($enrolinstance, $userid, $role->id);
             }
         }
 
