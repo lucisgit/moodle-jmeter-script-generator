@@ -164,7 +164,7 @@ class chat_test_setup extends test_setup {
         return "<input class=\"input border\" type=\"checkbox\" name=\"data[" . $this->get_name() . "][ajax]\" value=\"1\"/> Use AJAX chat box";
     }
 
-    public function process_optional_settings() {
+    public function process_optional_settings($data) {
         global $_SESSION;
 
         foreach($_SESSION['loadtesting_data'][$this->get_name()] as &$activity) {

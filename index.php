@@ -728,7 +728,7 @@ abstract class test_setup {
         return '';
     }
 
-    public function process_optional_settings() {
+    public function process_optional_settings($data) {
     }
 
     /**
@@ -936,7 +936,7 @@ class jmeter {
                 }
             }
 
-            $testclasses[$type]->process_optional_settings();
+            $testclasses[$type]->process_optional_settings($data);
 
             // Build the complete list of courses
             if (isset($jmeter_data['activities'][$type])) {
