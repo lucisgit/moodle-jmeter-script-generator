@@ -1128,11 +1128,11 @@ class jmeter {
             <div style="border:1px solid #ccc;padding:5px;">
                 <form name="users" method="POST">
                     <input type="hidden" name="action" value="users" />
-                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="generate_users" value="1"/></div>
-                    <div style="padding-bottom:15px;">Generate user accounts</div>
+                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="generate_users" id="generate_users" value="1"/></div>
+                    <div style="padding-bottom:15px;"><label for="generate_users">Generate user accounts</label></div>
 
-                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="enrol" value="1"/></div>
-                    <div style="padding-bottom:15px;">Automatically enrol created users in relevant courses</div>
+                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="enrol" id="enrol" value="1"/></div>
+                    <div style="padding-bottom:15px;"><label for="enrol">Automatically enrol created users in relevant courses</label></div>
 
                     <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="users" value="1"/></div>
                     <div style="padding-bottom:15px;">How many users to test with</div>
