@@ -622,12 +622,6 @@ class graph_results extends results_collector {
     }
 }
 
-class graph_full_results extends results_collector {
-    function __construct() {
-        parent::__construct('Graph Full Results', 'GraphAccumVisualizer');
-    }
-}
-
 abstract class test_setup {
 
     /**
@@ -790,7 +784,6 @@ class jmeter {
         $this->testplan_hashtree_constructor->add_child(new aggregate_report());
         $this->testplan_hashtree_constructor->add_child(new aggregate_graph());
         $this->testplan_hashtree_constructor->add_child(new graph_results());
-        $this->testplan_hashtree_constructor->add_child(new graph_full_results());
     }
 
     function add_hashTree_to_xml_dom($xml_parent_pointer) {
