@@ -1113,13 +1113,13 @@ class jmeter {
                     <div style="float:left;padding-right:5px;"><input type="checkbox" name="generate_users" value="1"/></div>
                     <div style="padding-bottom:15px;">Generate user accounts</div>
 
-                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="loops" value="1"/></div>
+                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="enrol" value="1"/></div>
                     <div style="padding-bottom:15px;">Automatically enrol created users in relevant courses</div>
 
                     <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="users" value="1"/></div>
                     <div style="padding-bottom:15px;">How many users to test with</div>
 
-                    <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="enrol" value="1"/></div>
+                    <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="loops" value="1"/></div>
                     <div style="padding-bottom:15px;">How many times to loop the tests</div>
 
                     <div style="padding-bottom:15px;">
