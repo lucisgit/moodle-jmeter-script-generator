@@ -1032,7 +1032,7 @@ class jmeter {
     echo $OUTPUT->box_start();
 
     // Check permission to see report
-    require_capability('moodle/site:viewreports', get_context_instance(CONTEXT_SYSTEM, SITEID));
+    require_capability('moodle/site:viewreports', context_system::instance());
 
     //  Check to see if we've had a form posted
     if(!empty($_POST['action']) && $_POST['action'] == 'cat') {
