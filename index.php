@@ -928,36 +928,39 @@ class jmeter {
             }
         }
 
-        $selfplugin = enrol_get_plugin('self');
-        $role = $DB->get_record('role', array('shortname' => 'student'));
-        foreach ($jmeter_data['courses'] as $courseid) {
-            $course = $DB->get_record('course', array('id' => $courseid));
-            // Check whether the loadtesting enrolment mechanism exists
-            $instances = enrol_get_instances($course->id, false);
-            $enrolinstance = null;
 
-            foreach ($instances as $instance) {
-                if ($instance->enrol === 'self' && $instance->name === 'loadtesting') {
-                    $enrolinstance = $instance;
+        if (isset($_POST['enrol']) && $_POST['enrol'] == 1) {
+            $selfplugin = enrol_get_plugin('self');
+            $role = $DB->get_record('role', array('shortname' => 'student'));
+            foreach ($jmeter_data['courses'] as $courseid) {
+                $course = $DB->get_record('course', array('id' => $courseid));
+                // Check whether the loadtesting enrolment mechanism exists
+                $instances = enrol_get_instances($course->id, false);
+                $enrolinstance = null;
+
+                foreach ($instances as $instance) {
+                    if ($instance->enrol === 'self' && $instance->name === 'loadtesting') {
+                        $enrolinstance = $instance;
+                    }
                 }
-            }
 
-            if ($enrolinstance === null) {
-                // Create a new enrol instance
-                $fields = array(
-                    'status'        => 1,
-                    'name'          => 'loadtesting',
-                );
-                $enrolinstance = $selfplugin->add_instance($course, $fields);
-                $enrolinstance = $DB->get_record('enrol', array('id' => $enrolinstance));
-            }
+                if ($enrolinstance === null) {
+                    // Create a new enrol instance
+                    $fields = array(
+                        'status'        => 1,
+                        'name'          => 'loadtesting',
+                    );
+                    $enrolinstance = $selfplugin->add_instance($course, $fields);
+                    $enrolinstance = $DB->get_record('enrol', array('id' => $enrolinstance));
+                }
 
-            // Ensure that it's enabled
-            $selfplugin->update_status($enrolinstance, ENROL_INSTANCE_ENABLED);
+                // Ensure that it's enabled
+                $selfplugin->update_status($enrolinstance, ENROL_INSTANCE_ENABLED);
 
-            // Assign all of the test users to the instance
-            foreach ($userids as $userid) {
-                $selfplugin->enrol_user($enrolinstance, $userid, $role->id);
+                // Assign all of the test users to the instance
+                foreach ($userids as $userid) {
+                    $selfplugin->enrol_user($enrolinstance, $userid, $role->id);
+                }
             }
         }
 
@@ -1107,11 +1110,16 @@ class jmeter {
             <div style="border:1px solid #ccc;padding:5px;">
                 <form name="users" method="POST">
                     <input type="hidden" name="action" value="users" />
-                    <div style="float:left"><input type="checkbox" name="generate_users" value="1"/></div>
+                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="generate_users" value="1"/></div>
                     <div style="padding-bottom:15px;">Generate user accounts</div>
+
+                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="loops" value="1"/></div>
+                    <div style="padding-bottom:15px;">Automatically enrol created users in relevant courses</div>
+
                     <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="users" value="1"/></div>
                     <div style="padding-bottom:15px;">How many users to test with</div>
-                    <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="loops" value="1"/></div>
+
+                    <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="enrol" value="1"/></div>
                     <div style="padding-bottom:15px;">How many times to loop the tests</div>
 
                     <div style="padding-bottom:15px;">
