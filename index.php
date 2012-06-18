@@ -435,6 +435,24 @@ class cookiemanager extends main_element {
     }
 }
 
+class randomvariable extends main_element {
+    function __construct($name, $min, $max, $outputformat) {
+        $cmstr = 'RandomVariableConfig';
+        //  Create the CookieManager
+        parent::__construct($cmstr, 'TestBeanGUI', $cmstr, 'Random Variable');
+
+        //  Create it's child elements
+        $this->add_child(new stringprop("variableName", $name));
+        $this->add_child(new stringprop("minimumValue", $min));
+        $this->add_child(new stringprop("maximumValue", $max));
+        $this->add_child(new stringprop("outputFormat", $outputformat));
+        $this->add_child(new boolprop("perThread", 'true'));
+
+        //  Create the sibling hashtree
+        $this->add_sibling(new hashtree());
+    }
+}
+
 class moodle_login extends xml_element {
     function __construct($name_part) {
         $arguments = array('username'=>'${username}', 'password'=>'${password}', 'FromURL' => '', 'Proceed1' => 'Sign in');
