@@ -18,7 +18,7 @@ class glossary_test extends master_test {
     private $deleteparams;
     private $confirmdeleteparams;
 
-    var $entries = 5;
+    public $entries;
 
     function __construct($glossary) {
         global $DB;
@@ -91,6 +91,12 @@ class glossary_test extends master_test {
         $this->viewregex = array();
         $this->viewregex[] = new regex("$this->name Get entryid", 'entryid', '^.*hook=(.*)[^0-9]?$', false, '$1$', false, 'URL');
 
+        if (isset($glossary->entries) && is_numeric($glossary->entries)) {
+            $this->entries = $glossary->entries;
+        } else {
+            $this->entries = 5;
+        }
+
         $this->glossary_startup();
     }
 
@@ -104,27 +110,28 @@ class glossary_test extends master_test {
 
         //  Make a post (to insure there is at least one post), find a random discussion, find a reply, make a post
         for($i=1; $i <= $this->entries; $i++) {
+            $curname = $this->name . ' Run ' . $i;
             // The concept name
             $concept = 'concept_${threaduser}';
 
             // View glossary add page
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Create new entry form', $this->addurl, $this->addparams, false, $this->addregex));
+            $this->threadgroup_hashtree->add_child(new httpsampler($curname.' Create new entry form', $this->addurl, $this->addparams, false, $this->addregex));
 
             $this->addargs['concept'] = $concept;
             $this->addargs['aliases'] = 'keyword_${threaduser}';
 
             // Create new entry
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Create new entry (submitted)', $this->addurl, $this->addargs, (object) array('method' => 'POST'), $this->viewregex));
+            $this->threadgroup_hashtree->add_child(new httpsampler($curname.' Create new entry (submitted)', $this->addurl, $this->addargs, (object) array('method' => 'POST'), $this->viewregex));
 
             // Edit it
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Editing Entry (form)', $this->addurl, $this->editformargs, false, $this->addregex));
+            $this->threadgroup_hashtree->add_child(new httpsampler($curname.' Editing Entry (form)', $this->addurl, $this->editformargs, false, $this->addregex));
             $this->editargs['concept'] = $concept;
             $this->editargs['aliases'] = 'keyword_${threaduser}';
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Editing Entry (submitted)', $this->addurl, $this->editargs, (object) array('method' => 'POST'), $this->viewregex));
+            $this->threadgroup_hashtree->add_child(new httpsampler($curname.' Editing Entry (submitted)', $this->addurl, $this->editargs, (object) array('method' => 'POST'), $this->viewregex));
 
             // Delete it
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Deleting Entry (form)', $this->deleteurl, $this->deleteparams));
-            $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Deleting Entry (submitted)', $this->deleteurl, $this->confirmdeleteparams));
+            $this->threadgroup_hashtree->add_child(new httpsampler($curname.' Deleting Entry (form)', $this->deleteurl, $this->deleteparams));
+            $this->threadgroup_hashtree->add_child(new httpsampler($curname.' Deleting Entry (submitted)', $this->deleteurl, $this->confirmdeleteparams));
         }
 
         $this->test_finish();
@@ -134,4 +141,16 @@ class glossary_test extends master_test {
 }
 
 class glossary_test_setup extends test_setup {
+
+    public function optional_settings() {
+        return "<input class=\"input border\" type=\"text\" name=\"data[" . $this->get_name() . "][entries]\" value=\"5\"/> Entries per user per loop";
+    }
+
+    public function process_optional_settings($data) {
+        global $_SESSION;
+
+        foreach($_SESSION['loadtesting_data'][$this->get_name()] as &$activity) {
+            $activity->entries = (isset($data->entries)) ? $data->entries : 0;
+        }
+    }
 }
