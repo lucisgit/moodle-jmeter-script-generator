@@ -264,6 +264,7 @@ class httpsampler extends http_request_defaults {
         $defaults->mimetype          = false;
         $defaults->monitor           = 'false';
         $defaults->embedded_url_re   = false;
+        $defaults->image_parser      = IMAGE_PARSER ? 'true' : 'false';
         if(empty($properties)) {
             $properties = clone($defaults);
         } else {
@@ -286,11 +287,7 @@ class httpsampler extends http_request_defaults {
         $this->add_child(new   boolprop("{$htstr}.monitor",           $properties->monitor));
         $this->add_child(new stringprop("{$htstr}.embedded_url_re",   $properties->embedded_url_re));
         $this->add_child(new stringprop("{$htstr}.name",              'SomeName'));
-
-        // We don't set a default as this would override the http_request_defaults
-        if ($properties->image_parser) {
-            $this->add_child(new   boolprop("{$htstr}.image_parser",      $properties->image_parser));
-        }
+        $this->add_child(new   boolprop("{$htstr}.image_parser",      $properties->image_parser));
     }
 }
 
@@ -769,6 +766,7 @@ class jmeter {
         define('MOODLE_SITE', $site);
         define('USERS',  $jmeter_data['users']);
         define('LOOPS',  $jmeter_data['loops']);
+        define('IMAGE_PARSER', $jmeter_data['image_parser']);
 
         //  Start XML
         $xmlstr = "<?xml version='1.0' encoding=\"UTF-8\"?>\n".
@@ -891,6 +889,7 @@ class jmeter {
         //  Now we need to add the user and loop info into the jmeter data
         $jmeter_data['users'] = $user_count;
         $jmeter_data['loops'] = intval($_POST['loops']);
+        $jmeter_data['image_parser'] = $_POST['image_parser'];
         $jmeter_data['courses'] = array();
         $jmeter_data['activities'] = array();
         //$jmeter_data['login'] = $_POST['user_type'];
@@ -1144,6 +1143,9 @@ class jmeter {
 
                     <div style="float:left;padding-right:5px;"><input class="input border" size="2" type="input" name="loops" value="1"/></div>
                     <div style="padding-bottom:15px;">How many times to loop the tests</div>
+
+                    <div style="float:left;padding-right:5px;"><input type="checkbox" name="image_parser" id="image_parser" value="1"/></div>
+                    <div style="padding-bottom:15px;"><label for="image_parser">Retrieve embedded resources from HTML</label></div>
 
                     <div style="padding-bottom:15px;">
                         <table cellpadding="5" cellspacing="0" class="border" style="width:100%">
