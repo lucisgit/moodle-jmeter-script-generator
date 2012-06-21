@@ -174,9 +174,8 @@ class http_request_defaults extends main_element {
 
         //  This is for dev only, won't do anything on live!
         //  Find the first /
-        if(($pos = strpos($defaults->domain, '/')) !== false)
-        {
-		$defaults->domain = substr($defaults->domain, 0, $pos);
+        if(($pos = strpos($defaults->domain, '/')) !== false) {
+            $defaults->domain = substr($defaults->domain, 0, $pos);
         }
 
         $defaults->port              = false;
