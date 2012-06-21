@@ -131,10 +131,10 @@ class chat_test extends master_test {
         $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' View Chat window', $this->chat_window, $this->window_params, false, $this->window_regex));
 
         //  Chat init
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Init Chat', $this->chat_init, $this->init_params, (object) array('method' => 'POST')));
+        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Init Chat', $this->chat_init, $this->init_params, (object) array('method' => 'POST', 'image_parser' => false)));
 
         //  Chat initial update
-        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Init Initial Update', $this->chat_update, $this->update_params, (object) array('method' => 'POST'), $this->post_regex));
+        $this->threadgroup_hashtree->add_child(new httpsampler($this->name.' Init Initial Update', $this->chat_update, $this->update_params, (object) array('method' => 'POST', 'image_parser' => false), $this->post_regex));
 
         //  Add in the loopcontroller
         $this->threadgroup_hashtree->add_child(new loopcontroller($this->name, $this->posts, $loop_forever='false'));
@@ -146,7 +146,7 @@ class chat_test extends master_test {
         $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Post Chat Message', $this->chat_post, $this->post_params, (object) array('method' => 'POST')));
 
         //  Refesh chat window and regex's to get data
-        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Init Update', $this->chat_update, $this->post_update, (object) array('method' => 'POST'), $this->post_regex));
+        $loopcontroller_hashtree->add_child(new httpsampler($this->name.' Init Update', $this->chat_update, $this->post_update, (object) array('method' => 'POST', 'image_parser' => false), $this->post_regex));
 
         // Add loopcontroller
         $this->threadgroup_hashtree->add_child($loopcontroller_hashtree);

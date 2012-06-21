@@ -286,6 +286,11 @@ class httpsampler extends http_request_defaults {
         $this->add_child(new   boolprop("{$htstr}.monitor",           $properties->monitor));
         $this->add_child(new stringprop("{$htstr}.embedded_url_re",   $properties->embedded_url_re));
         $this->add_child(new stringprop("{$htstr}.name",              'SomeName'));
+
+        // We don't set a default as this would override the http_request_defaults
+        if ($properties->image_parser) {
+            $this->add_child(new   boolprop("{$htstr}.image_parser",      $properties->image_parser));
+        }
     }
 }
 
